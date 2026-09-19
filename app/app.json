@@ -6,7 +6,10 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
-    "backgroundColor": "#0B0B0F",
+    "splash": {
+      "backgroundColor": "#0B0B0F",
+      "resizeMode": "contain"
+    },
     "android": {
       "package": "com.subrahmanyam.worldclock",
       "adaptiveIcon": {
