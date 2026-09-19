@@ -1,0 +1,47 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No package-lock.json is committed (matches the CallVault/PocketPTT
+      # setup) so we use `npm install`, not `npm ci`.
+      - name: Install dependencies
+        run: npm install
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Prebuild native Android project
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build release APK
+        working-directory: app/android
+        run: ./gradlew assembleRelease
+
+      # NOTE: release signing is not wired up yet (see README) — this
+      # produces an unsigned APK, same starting point PocketPTT shipped
+      # v1 with. Fine for `adb install -r` on a device that already trusts
+      # the previous debug/unsigned build; wire in the committed-keystore
+      # pattern before relying on this for anything else.
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldclock-apk
+          path: app/android/app/build/outputs/apk/release/*.apk
