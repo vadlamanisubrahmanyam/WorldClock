@@ -1,11 +1,12 @@
 export type TimeFormat = "12h" | "24h";
-export type WidgetTextTheme = "auto" | "light" | "dark";
+/** "dark" = dark card background with light text. "light" = white card background with dark text. */
+export type WidgetBackgroundTheme = "dark" | "light";
 
 export interface AppSettings {
   timeFormat: TimeFormat;
   /** 0 = fully transparent, 100 = fully opaque */
   widgetOpacity: number;
-  widgetTextTheme: WidgetTextTheme;
+  widgetBackgroundTheme: WidgetBackgroundTheme;
 }
 
 export interface TimeZoneEntry {

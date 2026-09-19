@@ -6,7 +6,7 @@ const KEY = "worldclock:settings";
 export const DEFAULT_SETTINGS: AppSettings = {
   timeFormat: "24h",
   widgetOpacity: 70,
-  widgetTextTheme: "auto",
+  widgetBackgroundTheme: "dark",
 };
 
 export async function getSettings(): Promise<AppSettings> {

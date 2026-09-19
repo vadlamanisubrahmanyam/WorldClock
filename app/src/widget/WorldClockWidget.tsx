@@ -9,10 +9,24 @@ import { FlexWidget, TextWidget } from "react-native-android-widget";
 import type { AppSettings, TimeZoneEntry } from "../types";
 import { formatOffset, formatTime } from "../utils/time";
 
-function opacityToAlphaHex(opacity: number): string {
-  const clamped = Math.max(0, Math.min(100, opacity));
-  const alpha = Math.round((clamped / 100) * 255);
-  return alpha.toString(16).padStart(2, "0").toUpperCase();
+// Theme-based, not opacity-based: the opacity slider only ever controls how
+// see-through the card is, never text/background colour. Two explicit
+// palettes, chosen by the user in Settings — no "auto" guessing.
+const PALETTES = {
+  dark: { rgb: "28, 28, 30", text: "#FFFFFF", subText: "#D0D0D0" },
+  light: { rgb: "255, 255, 255", text: "#111111", subText: "#5C5C60" },
+} as const;
+
+// Using an rgba() *function* string (not an 8-digit hex) is the important
+// part here: an 8-digit hex is ambiguous between the CSS convention
+// (#RRGGBBAA, alpha last) and Android's native convention (#AARRGGBB, alpha
+// first) — that ambiguity was why the opacity slider used to look like it
+// wasn't doing anything (and made "opaque" settings render almost fully
+// transparent). rgba(r, g, b, a) names each channel explicitly, so there's
+// nothing for either convention to get backwards.
+function toRgba(rgb: string, opacityPercent: number): string {
+  const clamped = Math.max(0, Math.min(100, opacityPercent));
+  return `rgba(${rgb}, ${(clamped / 100).toFixed(2)})`;
 }
 
 export function WorldClockWidget({
@@ -22,12 +36,10 @@ export function WorldClockWidget({
   timezones: TimeZoneEntry[];
   settings: AppSettings;
 }) {
-  const isDark =
-    settings.widgetTextTheme === "dark" ||
-    (settings.widgetTextTheme === "auto" && settings.widgetOpacity >= 35);
-  const textColor = isDark ? "#FFFFFF" : "#111111";
-  const subTextColor = isDark ? "#D0D0D0" : "#444444";
-  const backgroundColor = `#1C1C1E${opacityToAlphaHex(settings.widgetOpacity)}`;
+  const palette = PALETTES[settings.widgetBackgroundTheme];
+  const textColor = palette.text;
+  const subTextColor = palette.subText;
+  const backgroundColor = toRgba(palette.rgb, settings.widgetOpacity);
 
   return (
     <FlexWidget

@@ -3,8 +3,10 @@ Generates icon.png, adaptive-icon.png, and a widget-preview placeholder.
 Run once locally (`python3 scripts/generate_icons.py`) and commit the output —
 these are static assets, not something CI needs to regenerate.
 Matches the portfolio's existing icon-generation convention (Python/Pillow).
+
+Icon is a digital (numeral) readout, not an analog clock face — matches the
+app/widget itself, which only ever shows digital time.
 """
-import math
 import os
 
 from PIL import Image, ImageDraw, ImageFont
@@ -18,33 +20,69 @@ WHITE = (255, 255, 255, 255)
 DIM = (138, 138, 142, 255)      # #8A8A8E
 
 
-def draw_clock_face(draw, cx, cy, r, face_color, hand_color, tick_color):
-    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=face_color)
-    # Hour ticks
-    for i in range(12):
-        angle = math.radians(i * 30)
-        outer = r * 0.92
-        inner = r * (0.80 if i % 3 == 0 else 0.86)
-        x1, y1 = cx + inner * math.sin(angle), cy - inner * math.cos(angle)
-        x2, y2 = cx + outer * math.sin(angle), cy - outer * math.cos(angle)
-        width = max(2, int(r * (0.03 if i % 3 == 0 else 0.015)))
-        draw.line([x1, y1, x2, y2], fill=tick_color, width=width)
-    # Hands fixed at ~10:08, a friendly "world clock" look
-    hour_angle = math.radians(10 / 12 * 360)
-    minute_angle = math.radians(8 / 60 * 360)
-    hx, hy = cx + r * 0.5 * math.sin(hour_angle), cy - r * 0.5 * math.cos(hour_angle)
-    mx, my = cx + r * 0.72 * math.sin(minute_angle), cy - r * 0.72 * math.cos(minute_angle)
-    draw.line([cx, cy, hx, hy], fill=hand_color, width=max(3, int(r * 0.05)))
-    draw.line([cx, cy, mx, my], fill=hand_color, width=max(2, int(r * 0.035)))
-    draw.ellipse([cx - r * 0.04, cy - r * 0.04, cx + r * 0.04, cy + r * 0.04], fill=hand_color)
+def load_font(size):
+    for path in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+    ):
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def draw_digital_face(draw, size, face_color, text_color, accent_color, transparent_bg):
+    pad = size * 0.06
+    card_r = size * 0.22
+    if not transparent_bg:
+        draw.rounded_rectangle([pad, pad, size - pad, size - pad], radius=card_r, fill=face_color)
+
+    inner_pad = size * 0.14
+    card_left, card_right = pad, size - pad
+
+    # Small accent "AM"-style tab, top-left, just for visual interest
+    tab_w, tab_h = size * 0.16, size * 0.07
+    tab_x, tab_y = card_left + inner_pad, pad + size * 0.10
+    draw.rounded_rectangle(
+        [tab_x, tab_y, tab_x + tab_w, tab_y + tab_h], radius=tab_h / 2, fill=accent_color
+    )
+
+    # Big digital time readout, centered, sized to fit within the card padding
+    time_text = "12:47"
+    max_width = card_right - card_left - inner_pad * 2
+    font_size = int(size * 0.30)
+    font = load_font(font_size)
+    bbox = draw.textbbox((0, 0), time_text, font=font)
+    while (bbox[2] - bbox[0]) > max_width and font_size > 10:
+        font_size -= 4
+        font = load_font(font_size)
+        bbox = draw.textbbox((0, 0), time_text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    tx = (card_left + card_right) / 2 - tw / 2 - bbox[0]
+    ty = size * 0.52 - th / 2 - bbox[1]
+    draw.text((tx, ty), time_text, font=font, fill=text_color)
+
+    # Thin accent underline
+    line_y = size * 0.72
+    draw.rounded_rectangle(
+        [card_left + inner_pad, line_y, size - pad - inner_pad, line_y + size * 0.025],
+        radius=size * 0.0125,
+        fill=accent_color,
+    )
 
 
 def make_icon(size, filename, transparent_bg=False):
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0) if transparent_bg else BG)
     draw = ImageDraw.Draw(img)
-    cx, cy = size / 2, size / 2
-    r = size * 0.34
-    draw_clock_face(draw, cx, cy, r, face_color=(28, 28, 30, 255), hand_color=WHITE, tick_color=ACCENT)
+    draw_digital_face(
+        draw,
+        size,
+        face_color=(28, 28, 30, 255),
+        text_color=WHITE,
+        accent_color=ACCENT,
+        transparent_bg=transparent_bg,
+    )
     img.save(os.path.join(ASSETS, filename))
     print(f"wrote {filename} ({size}x{size})")
 

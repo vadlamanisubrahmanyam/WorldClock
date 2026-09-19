@@ -80,6 +80,21 @@ to reinstall/uninstall repeatedly.
   Pillow. Swap it for a real screenshot of the widget once you've built and
   placed it on a home screen — that's what Android shows in the widget
   picker.
+- Widget background/text colour is theme-based, not "auto": `Settings →
+  Widget theme` picks **Dark** (dark card, light text) or **Light** (white
+  card, dark text) explicitly — `src/widget/WorldClockWidget.tsx`. The
+  opacity slider only ever fades that chosen background; it never changes
+  text colour.
+- Background colour is built as an `rgba(r, g, b, a)` string, not an
+  8-digit hex. An 8-digit hex is ambiguous between the CSS convention
+  (`#RRGGBBAA`, alpha last) and Android's native convention (`#AARRGGBB`,
+  alpha first) — that ambiguity was the original bug behind the opacity
+  slider appearing to do nothing. `rgba()` names each channel explicitly,
+  so don't reintroduce a hex+alpha shortcut here.
+- The app icon (`assets/icon.png`, `assets/adaptive-icon.png`) is a digital
+  readout ("12:47"), not an analog clock face, to match what the widget
+  itself actually shows. Regenerate with
+  `python3 scripts/generate_icons.py` after editing the script.
 
 ## Currency data
 

@@ -2,7 +2,7 @@ import Slider from "@react-native-community/slider";
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from "../storage/settingsStore";
-import type { AppSettings, TimeFormat, WidgetTextTheme } from "../types";
+import type { AppSettings, TimeFormat, WidgetBackgroundTheme } from "../types";
 import { refreshWidget } from "../widget/refreshWidget";
 
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
@@ -52,7 +52,35 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         ))}
       </View>
 
-      <Text style={styles.sectionLabel}>Widget background</Text>
+      <Text style={styles.sectionLabel}>Widget theme</Text>
+      <View style={styles.segmented}>
+        {(["dark", "light"] as WidgetBackgroundTheme[]).map((theme) => (
+          <Pressable
+            key={theme}
+            style={[
+              styles.segment,
+              settings.widgetBackgroundTheme === theme && styles.segmentActive,
+            ]}
+            onPress={() => update({ widgetBackgroundTheme: theme })}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                settings.widgetBackgroundTheme === theme && styles.segmentTextActive,
+              ]}
+            >
+              {theme === "dark" ? "Dark" : "Light"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={styles.hint}>
+        {settings.widgetBackgroundTheme === "dark"
+          ? "Dark card background with light text."
+          : "White card background with dark text."}
+      </Text>
+
+      <Text style={styles.sectionLabel}>Widget background opacity</Text>
       <Text style={styles.sectionValue}>{settings.widgetOpacity}% opaque</Text>
       <Slider
         style={{ width: "100%", height: 40 }}
@@ -69,28 +97,8 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         <Text style={styles.sliderEndText}>Transparent</Text>
         <Text style={styles.sliderEndText}>Solid</Text>
       </View>
-
-      <Text style={styles.sectionLabel}>Widget text colour</Text>
-      <View style={styles.segmented}>
-        {(["auto", "light", "dark"] as WidgetTextTheme[]).map((theme) => (
-          <Pressable
-            key={theme}
-            style={[styles.segment, settings.widgetTextTheme === theme && styles.segmentActive]}
-            onPress={() => update({ widgetTextTheme: theme })}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                settings.widgetTextTheme === theme && styles.segmentTextActive,
-              ]}
-            >
-              {theme[0].toUpperCase() + theme.slice(1)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
       <Text style={styles.hint}>
-        "Auto" picks light or dark text based on how opaque the widget background is.
+        Opacity applies to whichever theme you picked above — it never changes text colour.
       </Text>
     </View>
   );
