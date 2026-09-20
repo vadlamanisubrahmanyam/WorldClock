@@ -1,6 +1,10 @@
+import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { handleAlarmFired, rescheduleAllAlarms } from "./src/notifications/alarmScheduler";
+import { configureNotificationHandler, ensureAlarmChannels, ensureNotificationPermission } from "./src/notifications/notifications";
+import { handleTimerFired } from "./src/notifications/timerScheduler";
 import { AdminScreen } from "./src/screens/AdminScreen";
 import { CurrencyScreen } from "./src/screens/CurrencyScreen";
 import { HomeScreen } from "./src/screens/HomeScreen";
@@ -16,6 +20,33 @@ type ClockView = "home" | "admin" | "settings";
 export default function App() {
   const [tab, setTab] = useState<Tab>("clock");
   const [clockView, setClockView] = useState<ClockView>("home");
+
+  useEffect(() => {
+    configureNotificationHandler();
+    (async () => {
+      await ensureAlarmChannels();
+      await ensureNotificationPermission();
+      // Re-derives every enabled alarm's next occurrence on every app open —
+      // this is what stands in for a background reschedule job for repeating
+      // alarms. See alarmScheduler.ts for why.
+      await rescheduleAllAlarms();
+    })();
+
+    // Covers the other half of keeping repeating alarms accurate: when the
+    // user opens/dismisses a fired alarm or timer notification, react to it
+    // immediately rather than waiting for the next cold start.
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as
+        | { kind?: string; alarmId?: string }
+        | undefined;
+      if (data?.kind === "alarm" && data.alarmId) {
+        handleAlarmFired(data.alarmId);
+      } else if (data?.kind === "timer") {
+        handleTimerFired();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>

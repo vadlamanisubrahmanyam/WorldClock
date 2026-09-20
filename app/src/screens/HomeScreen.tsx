@@ -66,7 +66,9 @@ export function HomeScreen({
       />
 
       <Pressable style={styles.adminButton} onPress={onOpenAdmin}>
-        <Text style={styles.adminButtonText}>Manage time zones ({timezones.length}/5)</Text>
+        <Text style={styles.adminButtonText}>
+          Admin · Time zones ({timezones.length}/5), Alarms, Timer
+        </Text>
       </Pressable>
 
       <Text style={styles.hint}>

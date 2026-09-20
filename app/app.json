@@ -15,9 +15,20 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0B0F"
-      }
+      },
+      "permissions": ["SCHEDULE_EXACT_ALARM"]
     },
     "plugins": [
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/alarm_classic.wav",
+            "./assets/sounds/alarm_chime.wav",
+            "./assets/sounds/alarm_digital.wav"
+          ]
+        }
+      ],
       [
         "react-native-android-widget",
         {
