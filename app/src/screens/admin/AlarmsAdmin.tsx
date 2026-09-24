@@ -226,6 +226,11 @@ export function AlarmsAdmin() {
                 <Text style={styles.toneCheck}>{editing.toneId === tone.id ? "✓" : ""}</Text>
               </Pressable>
             ))}
+            <Text style={styles.hint}>
+              "Default (system sound)" uses your phone's own default notification sound, which
+              is silent on some devices/OEMs — the other three always play, since they're
+              bundled sounds.
+            </Text>
 
             {alarms.some((a) => a.id === editing.id) && (
               <Pressable

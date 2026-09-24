@@ -214,6 +214,10 @@ export function TimerAdmin() {
         </Pressable>
       ))}
       {isRunning && <Text style={styles.hint}>Pause the timer to change its tone.</Text>}
+      <Text style={styles.hint}>
+        "Default (system sound)" uses your phone's own default notification sound, which is
+        silent on some devices/OEMs — the other three always play, since they're bundled sounds.
+      </Text>
 
       <Text style={styles.hint}>
         Rings via a notification, so it still fires if you leave the app while it counts down —

@@ -102,11 +102,44 @@ to reinstall/uninstall repeatedly.
   still uses `rgba(r, g, b, a)` (see `src/widget/WorldClockWidget.tsx`)
   because it's easier to generate from a 0–100 opacity value and its type
   (`RgbaColor`) is exported and checked by `npx tsc`, not because the hex
-  form was broken. If opacity still looks wrong on-device, the more likely
-  cause is Android 12+'s own system-drawn widget background/corner chrome
-  sitting behind the content — that's a platform behaviour, not something
-  fixable in this file — worth confirming against a real device before
-  chasing it further in code.
+  form was broken.
+- **Still open, and this time honestly unresolved:** opacity and
+  light/dark theme still don't visibly change on-device, always rendering
+  dark. This round of investigation traced *two full layers* of the actual
+  installed source rather than guessing:
+  1. `requestWidgetUpdate`'s native lookup
+     (`RNWidgetUtil.getWidgetProviderClassName` in the library's Java
+     source) — the `widgetName: "WorldClock"` passed from the app matches
+     the generated provider class correctly; this isn't a naming mismatch.
+  2. The actual color pipeline — `convertColor()` in
+     `style.utils.js` (JS side) correctly turns an `rgba(28, 28, 30, 0.7)`
+     string into `#B31C1C1E`, genuine `#AARRGGBB` order, *before* it
+     crosses the bridge to `BaseWidget.java`'s
+     `Color.parseColor(props.getString("backgroundColor"))` call (native
+     side). Traced by hand through both files — the conversion is correct.
+
+  Both layers check out, which means the bug (if it's in this codebase at
+  all, rather than an Android 12+ system-drawn widget background/corner
+  treatment sitting behind everything — a real platform behaviour, not
+  fixable here) is somewhere I can't find by reading source alone. Rather
+  than offer a third unverified theory, this build adds **temporary
+  diagnostics** instead:
+  - A small red debug line directly on the widget card
+    (`WorldClockWidget.tsx`) showing the exact `theme`/`opacity` values
+    that render actually received, plus a timestamp.
+  - `console.warn`/`console.log` calls in `refreshWidget.tsx` and
+    `widgetTaskHandler.tsx`, visible via `adb logcat | grep WorldClock`.
+
+  **What to check next, with these in place:** change a Settings toggle,
+  then look at the widget. If the debug line's values update but the
+  background/text colour doesn't — the bug is in native rendering, past
+  where source-reading can diagnose it further, and warrants a Kotlin/Java
+  debugger or an issue filed against the library. If the debug line itself
+  doesn't update — check `adb logcat` for the `refreshWidget` /
+  `widgetTaskHandler` lines above; a missing `widgetTaskHandler` log after
+  changing settings means requestWidgetUpdate genuinely isn't reaching the
+  widget, which is a different (and more findable) problem than a
+  rendering one. Remove the debug line and logging once this is resolved.
 - The app icon (`assets/icon.png`, `assets/adaptive-icon.png`) is a digital
   readout ("12:47"), not an analog clock face, to match what the widget
   itself actually shows. Regenerate with
@@ -133,6 +166,36 @@ it genuinely doesn't:
   synthesized beeps/chimes (`scripts/generate_tones.py`, pure Python
   `wave` + `math`, no audio assets needed) — swap in real `.wav` files at
   the same paths for a nicer sound if you want.
+- **If a tone doesn't play (fixed once, but worth understanding):** the
+  first build of this feature had exactly this bug, traced by reading
+  expo-notifications' actual native Android source
+  (`NotificationChannelManagerModule`/`SoundResolver.java`). Android
+  channels are **immutable after creation** — re-running
+  `createNotificationChannel` with the same id but different settings is a
+  documented, silent no-op; it only takes effect the very first time that
+  channel id is created on a device. Sideloading upgraded builds over each
+  other (`adb install -r`) meant test devices kept whatever channel
+  settings existed from the *first* build that ever ran, regardless of
+  later code changes. The fix was giving each tone's channel id a version
+  suffix (`CHANNEL_VERSION` in `src/data/tones.ts`) so a changed tone gets
+  a genuinely new channel — no app uninstall needed, since `Alarm`/`TimerState`
+  only ever store a tone's `id`, and the channel id is looked up fresh at
+  schedule time. **If you ever change a tone's sound file or channel
+  config again, bump `CHANNEL_VERSION`** or already-installed devices
+  won't pick up the change, silently.
+- **"Default (system sound)" can be silent, and that's not a bug here.**
+  Traced through `AndroidXNotificationsChannelManager.createSoundUriFromArguments`
+  in the native source: that option resolves to
+  `Settings.System.DEFAULT_NOTIFICATION_URI` — literally whatever the
+  phone's own default *notification* sound is set to. On plenty of Android
+  devices/OEM skins that's Silent or near-inaudible, entirely outside this
+  app's control. The three bundled tones are actual audio files and always
+  play regardless of that setting, which is why `TONE_OPTIONS` puts
+  "Digital Alarm" first (the default for new alarms/timers) rather than
+  "Default". This only affects *new* state, though — a timer or alarm that
+  already has `toneId: "default"` saved from earlier testing keeps that
+  choice until you explicitly pick a different tone in its UI; the default
+  ordering change doesn't retroactively touch existing saved data.
 - **Repeat days, honestly:** rather than trust `expo-notifications`' native
   weekday/calendar trigger — which has a real history of inconsistent
   firing across SDK versions and platforms in community bug reports — this

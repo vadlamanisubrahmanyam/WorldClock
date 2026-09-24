@@ -23,12 +23,20 @@ export function configureNotificationHandler(): void {
 
 /**
  * One Android notification channel per selectable tone. This is required,
- * not just tidy: Android locks a channel's sound the first time the channel
- * is created, and silently ignores any later per-notification sound
- * override — so "let the user pick a tone" only works if each tone is its
- * own channel. No-op on iOS (channels are an Android concept) and safe to
- * call on every app start (creating a channel that already exists is a
- * harmless no-op).
+ * not just tidy: once a notification uses a channel, Android ignores any
+ * per-notification sound override in favour of the channel's own sound —
+ * so "let the user pick a tone" only works if each tone is its own
+ * channel. No-op on iOS (channels are an Android concept).
+ *
+ * IMPORTANT: calling this again with a channel id that already exists on
+ * the device does NOT update that channel — Android silently ignores
+ * changes to an existing channel's settings (sound included) by design.
+ * It only takes effect the first time a given channel id is created.
+ * That means safe-to-call-on-every-start is true for *adding new*
+ * channels, but changing an existing tone's sound/settings in code has NO
+ * effect on a device that already ran an earlier build with that same
+ * channel id. See the CHANNEL_VERSION comment in src/data/tones.ts — that's
+ * the actual mechanism for rolling out a changed tone.
  */
 export async function ensureAlarmChannels(): Promise<void> {
   if (Platform.OS !== "android") return;

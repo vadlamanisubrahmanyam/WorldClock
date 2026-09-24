@@ -38,10 +38,26 @@ export function WorldClockWidget({
   timezones: TimeZoneEntry[];
   settings: AppSettings;
 }) {
-  const palette = PALETTES[settings.widgetBackgroundTheme];
+  // Defensive fallback: if settings ever arrives without a recognized
+  // widgetBackgroundTheme (e.g. stale AsyncStorage data from an older
+  // build), fall back to "dark" instead of throwing — an undefined lookup
+  // into PALETTES here would fail the whole render silently and leave the
+  // widget stuck showing its last successful render, which looks exactly
+  // like "changes don't take effect."
+  const palette = PALETTES[settings.widgetBackgroundTheme] ?? PALETTES.dark;
   const textColor = palette.text;
   const subTextColor = palette.subText;
   const backgroundColor = toRgba(palette.rgb, settings.widgetOpacity);
+
+  // TEMPORARY DIAGNOSTIC — remove once the opacity/theme issue is
+  // confirmed fixed. Shows the exact settings values this render actually
+  // received, directly on the home screen widget. If this line visibly
+  // updates when you change Settings but the card's look doesn't, the bug
+  // is in native rendering/compositing, not in getting settings to the
+  // widget. If this line DOESN'T update either, the bug is upstream (the
+  // widget isn't re-rendering at all — see refreshWidget.tsx's
+  // widgetNotFound logging).
+  const debugLine = `theme=${settings.widgetBackgroundTheme} op=${settings.widgetOpacity} ${new Date().toLocaleTimeString()}`;
 
   return (
     <FlexWidget
@@ -87,6 +103,7 @@ export function WorldClockWidget({
           </FlexWidget>
         ))
       )}
+      <TextWidget text={debugLine} style={{ color: "#FF6B6B", fontSize: 8 }} />
     </FlexWidget>
   );
 }
